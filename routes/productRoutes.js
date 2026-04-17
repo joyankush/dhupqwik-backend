@@ -35,15 +35,15 @@ router.delete('/:id', auth, async (req, res) => {
   res.json({ message: 'Product deleted successfully' });
 });
 
-router.put('/:id', auth, upload.single('image'), async (req, res) => {
+router.put('/:id', auth, upload.array('images', 5), async (req, res) => {
   try {
     const updatedData = {
       ...req.body,
       sizes: JSON.parse(req.body.sizes || "[]")
     };
 
-    if (req.file) {
-      updatedData.image = req.file.path;
+    if (req.files.length > 0) {
+      updatedData.images = req.files.map(file => file.path);
     }
 
     const product = await Product.findByIdAndUpdate(
@@ -52,10 +52,6 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
       { new: true }
     );
 
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-
     res.json(product);
 
   } catch (err) {
@@ -63,15 +59,20 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
   }
 });
 
-router.post('/', auth, upload.single('image'), async (req, res) => {
-  const product = new Product({
-  ...req.body,
-  sizes: JSON.parse(req.body.sizes || "[]"),
-  image: req.file?.path
-});
+router.post('/', auth, upload.array('images', 5), async (req, res) => {
+  try {
+    const product = new Product({
+      ...req.body,
+      sizes: JSON.parse(req.body.sizes || "[]"),
+      images: req.files.map(file => file.path) // 🔥 cloud urls
+    });
 
-  await product.save();
-  res.json(product);
+    await product.save();
+    res.json(product);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 module.exports = router;
