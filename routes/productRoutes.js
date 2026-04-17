@@ -42,7 +42,7 @@ router.put('/:id', auth, upload.array('images', 5), async (req, res) => {
       sizes: JSON.parse(req.body.sizes || "[]")
     };
 
-    if (req.files.length > 0) {
+    if (req.files && req.files.length > 0) {
       updatedData.images = req.files.map(file => file.path);
     }
 
