@@ -64,12 +64,11 @@ router.post('/', auth, upload.array('images', 5), async (req, res) => {
     const product = new Product({
       ...req.body,
       sizes: JSON.parse(req.body.sizes || "[]"),
-      images: req.files.map(file => file.path) // 🔥 cloud urls
+      images: req.files?.map(file => file.path) || []
     });
 
     await product.save();
     res.json(product);
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
