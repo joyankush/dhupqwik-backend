@@ -7,28 +7,25 @@ const router   = express.Router();
 const Razorpay = require('razorpay');
 const crypto   = require('crypto');
 const Order    = require('../models/Order');
-const auth     = require('../middleware/authMiddleware');
-
-// Initialize Razorpay with your keys from .env
-const razorpay = new Razorpay({
-  key_id:     process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET
-});
 
 // ── POST /payment/create-order
-// Called when customer clicks "Pay Online" at checkout
-// Creates a Razorpay order and returns the order ID to frontend
 router.post('/create-order', async (req, res) => {
   try {
-    const { amount } = req.body; // amount in rupees e.g. 599
+    // ✅ FIX: Initialize Razorpay INSIDE the route
+    // This way it reads the env vars at request time, not at startup
+    const razorpay = new Razorpay({
+      key_id:     process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET
+    });
+
+    const { amount } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: 'Invalid amount' });
     }
 
-    // Razorpay requires amount in paise (1 rupee = 100 paise)
     const options = {
-      amount:   Math.round(amount * 100),
+      amount:   Math.round(amount * 100), // paise
       currency: 'INR',
       receipt:  `receipt_${Date.now()}`
     };
@@ -36,29 +33,25 @@ router.post('/create-order', async (req, res) => {
     const razorpayOrder = await razorpay.orders.create(options);
 
     res.json({
-      success:        true,
+      success:         true,
       razorpayOrderId: razorpayOrder.id,
       amount:          razorpayOrder.amount,
       currency:        razorpayOrder.currency,
-      keyId:           process.env.RAZORPAY_KEY_ID // sent to frontend to initialize widget
+      keyId:           process.env.RAZORPAY_KEY_ID
     });
   } catch (err) {
     console.error('Razorpay create order error:', err);
-    res.status(500).json({ message: 'Payment initialization failed' });
+    res.status(500).json({ message: 'Payment initialization failed: ' + err.message });
   }
 });
 
 // ── POST /payment/verify
-// Called after customer completes payment in Razorpay widget
-// Verifies the payment signature to confirm it's genuine
-// Then saves the order to MongoDB
 router.post('/verify', async (req, res) => {
   try {
     const {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      // Order details
       customerName,
       phone,
       address,
@@ -67,30 +60,29 @@ router.post('/verify', async (req, res) => {
       orderNote
     } = req.body;
 
-    // ── Signature verification ──────────────────────────────
-    // Razorpay signs the payment with your secret key.
-    // We recreate the signature and compare — if they match, payment is real.
-    const body      = razorpay_order_id + '|' + razorpay_payment_id;
-    const expected  = crypto
+    // Verify signature
+    const body     = razorpay_order_id + '|' + razorpay_payment_id;
+    const expected = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(body)
       .digest('hex');
 
     if (expected !== razorpay_signature) {
-      return res.status(400).json({ message: 'Payment verification failed. Invalid signature.' });
+      return res.status(400).json({ message: 'Payment verification failed.' });
     }
 
-    // ── Payment is genuine — save order to DB ───────────────
+    // Save order
     const order = new Order({
       customerName,
       phone,
       address,
       items,
       totalPrice,
-      orderNote:      orderNote || '',
-      status:         'confirmed', // online payments go straight to confirmed
-      paymentMethod:  'Online Payment',
-      paymentId:      razorpay_payment_id,
+      orderNote:       orderNote || '',
+      status:          'confirmed',
+      paymentMethod:   'Online Payment',
+      paymentStatus:   'paid',
+      paymentId:       razorpay_payment_id,
       razorpayOrderId: razorpay_order_id
     });
 
@@ -100,15 +92,15 @@ router.post('/verify', async (req, res) => {
       success: true,
       message: 'Payment successful! Order confirmed.',
       order: {
-        _id:         order._id,
-        status:      order.status,
-        totalPrice:  order.totalPrice,
-        paymentId:   order.paymentId
+        _id:        order._id,
+        status:     order.status,
+        totalPrice: order.totalPrice,
+        paymentId:  order.paymentId
       }
     });
   } catch (err) {
     console.error('Payment verify error:', err);
-    res.status(500).json({ message: 'Order saving failed after payment' });
+    res.status(500).json({ message: 'Order saving failed: ' + err.message });
   }
 });
 
