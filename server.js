@@ -17,7 +17,8 @@ app.use('/products', require('./routes/productRoutes'));
 app.use('/orders',   require('./routes/orderRoutes'));
 app.use('/settings', require('./routes/settingsRoutes'));
 app.use('/payment',  require('./routes/paymentRoutes'));
-app.use('/coupons',  require('./routes/couponRoutes')); // ✅ NEW
+app.use('/coupons',  require('./routes/couponRoutes'));
+app.use('/banners',  require('./routes/bannerRoutes')); // ✅ NEW
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
