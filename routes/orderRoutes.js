@@ -22,6 +22,21 @@ router.post('/', async (req, res) => {
       if (!product) {
         return res.status(404).json({ message: `Product not found: ${item.productId}` });
       }
+
+      // ── Stock check ──────────────────────────────────────
+      if (product.stock !== undefined && product.stock !== null) {
+        if (product.stock <= 0) {
+          return res.status(400).json({ message: `"${product.name}" is out of stock.` });
+        }
+        if (product.stock < item.quantity) {
+          return res.status(400).json({
+            message: `Only ${product.stock} unit(s) of "${product.name}" left in stock.`
+          });
+        }
+        // Decrement stock
+        await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -item.quantity } });
+      }
+
       enrichedItems.push({
         productId: item.productId,
         name:      product.name,

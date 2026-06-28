@@ -7,6 +7,7 @@ const router   = express.Router();
 const Razorpay = require('razorpay');
 const crypto   = require('crypto');
 const Order    = require('../models/Order');
+const Product  = require('../models/Product');
 
 // ── POST /payment/create-order
 router.post('/create-order', async (req, res) => {
@@ -69,6 +70,20 @@ router.post('/verify', async (req, res) => {
 
     if (expected !== razorpay_signature) {
       return res.status(400).json({ message: 'Payment verification failed.' });
+    }
+
+    // ── Decrement stock for each item ────────────────────
+    if (items && items.length) {
+      for (const item of items) {
+        if (item.productId) {
+          const product = await Product.findById(item.productId);
+          if (product && product.stock > 0) {
+            await Product.findByIdAndUpdate(item.productId, {
+              $inc: { stock: -item.quantity }
+            });
+          }
+        }
+      }
     }
 
     // Save order
