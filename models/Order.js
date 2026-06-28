@@ -1,5 +1,5 @@
 // ============================================================
-//  models/Order.js — Updated with payment fields
+//  models/Order.js — Updated with coupon fields
 // ============================================================
 
 const mongoose = require('mongoose');
@@ -8,7 +8,20 @@ const orderSchema = new mongoose.Schema({
   customerName: String,
   phone:        String,
   address:      String,
+  orderNote:    String,
   items:        Array,
+  originalPrice: {
+    type:    Number,
+    default: 0
+  },
+  discountAmount: {
+    type:    Number,
+    default: 0
+  },
+  couponCode: {
+    type:    String,
+    default: null
+  },
   totalPrice: {
     type:    Number,
     default: 0
@@ -21,7 +34,6 @@ const orderSchema = new mongoose.Schema({
     type:    Array,
     default: []
   },
-  // ✅ NEW payment fields
   paymentMethod: {
     type:    String,
     enum:    ['Cash on Delivery', 'Online Payment'],
@@ -32,9 +44,8 @@ const orderSchema = new mongoose.Schema({
     enum:    ['unpaid', 'paid'],
     default: 'unpaid'
   },
-  paymentId:       String, // Razorpay payment ID after successful payment
-  razorpayOrderId: String, // Razorpay order ID
-  orderNote:       String
+  paymentId:       String,
+  razorpayOrderId: String,
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

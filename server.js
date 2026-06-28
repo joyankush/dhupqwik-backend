@@ -15,8 +15,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/auth',     require('./routes/authRoutes'));
 app.use('/products', require('./routes/productRoutes'));
 app.use('/orders',   require('./routes/orderRoutes'));
-app.use('/settings', require('./routes/settingsRoutes')); // ✅ NEW
-app.use('/payment',  require('./routes/paymentRoutes'));  // ✅ NEW
+app.use('/settings', require('./routes/settingsRoutes'));
+app.use('/payment',  require('./routes/paymentRoutes'));
+app.use('/coupons',  require('./routes/couponRoutes')); // ✅ NEW
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

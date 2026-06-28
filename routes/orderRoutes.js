@@ -1,17 +1,18 @@
 // ============================================================
-//  routes/orderRoutes.js
+//  routes/orderRoutes.js — Updated with coupon support
 // ============================================================
 
 const express = require('express');
 const router  = express.Router();
 const Order   = require('../models/Order');
 const Product = require('../models/Product');
+const Coupon  = require('../models/Coupon');
 const auth    = require('../middleware/authMiddleware');
 
 // Place a new order (customer)
 router.post('/', async (req, res) => {
   try {
-    const { items, customerName, phone, address } = req.body;
+    const { items, customerName, phone, address, orderNote, couponCode } = req.body;
 
     let totalPrice = 0;
     const enrichedItems = [];
@@ -32,22 +33,56 @@ router.post('/', async (req, res) => {
       totalPrice += product.price * item.quantity;
     }
 
+    // ── Apply coupon if provided ──────────────────────────
+    let discountAmount = 0;
+    let appliedCoupon  = null;
+
+    if (couponCode) {
+      const coupon = await Coupon.findOne({
+        code:     couponCode.trim().toUpperCase(),
+        isActive: true
+      });
+
+      if (coupon && coupon.usedCount < coupon.maxUses) {
+        // Check expiry
+        const expired = coupon.expiryDate && new Date() > new Date(coupon.expiryDate);
+        if (!expired && totalPrice >= coupon.minOrder) {
+          if (coupon.type === 'percent') {
+            discountAmount = Math.round((totalPrice * coupon.value) / 100);
+          } else {
+            discountAmount = coupon.value;
+          }
+          discountAmount = Math.min(discountAmount, totalPrice);
+          appliedCoupon  = coupon;
+
+          // Increment usage count
+          await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } });
+        }
+      }
+    }
+
+    const finalTotal = totalPrice - discountAmount;
+
     const order = new Order({
       customerName, phone, address,
-      items: enrichedItems,
-      totalPrice,
-      status: 'pending'
+      items:          enrichedItems,
+      totalPrice:     finalTotal,
+      originalPrice:  totalPrice,
+      discountAmount,
+      couponCode:     appliedCoupon ? appliedCoupon.code : null,
+      orderNote:      orderNote || '',
+      status:         'pending'
     });
 
     await order.save();
-    res.json({ order }); // wrap in object so frontend can do data.order
+    res.json({ order });
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// ✅ FIX: stats/summary MUST be before /:id — otherwise Express
-// treats "stats" as an order ID and the route never matches
+// stats/summary — MUST be before /:id
 router.get('/stats/summary', auth, async (req, res) => {
   try {
     const [total, pending, confirmed, outForDelivery, delivered, cancelled, revenue] =
@@ -76,7 +111,7 @@ router.get('/stats/summary', auth, async (req, res) => {
   }
 });
 
-// ✅ FIX: phone/:phone MUST be before /:id too
+// phone/:phone — MUST be before /:id
 router.get('/phone/:phone', async (req, res) => {
   try {
     const orders = await Order.find({ phone: req.params.phone }).sort({ createdAt: -1 });
