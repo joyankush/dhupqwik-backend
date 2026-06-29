@@ -13,7 +13,7 @@ const upload  = require('../middleware/uploadMiddleware');
 // ── GET ALL PRODUCTS ───────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
+    const products = await Product.find().sort({ sortOrder: 1, createdAt: -1 });
     res.json(products);
   } catch (err) {
     console.error("GET PRODUCTS ERROR:", err);
@@ -62,6 +62,10 @@ router.post('/', auth, upload.array('images', 5), async (req, res) => {
       description,
       stock:            parseInt(stock) || 0,
       estimatedDelivery: req.body.estimatedDelivery || '',
+      category:          req.body.category || 'Uncategorized',
+      sortOrder:         parseInt(req.body.sortOrder) || 0,
+      category:          req.body.category || 'Uncategorized',
+      sortOrder:         parseInt(req.body.sortOrder) || 0,
       originalPrice: req.body.originalPrice ? parseFloat(req.body.originalPrice) : undefined,
       sizes:         sizes ? JSON.parse(sizes) : ['S', 'M', 'L', 'XL'],
       images:        req.files.map(f => f.path)
@@ -88,6 +92,8 @@ router.put('/:id', auth, upload.array('images', 5), async (req, res) => {
       price:       parseFloat(req.body.price),
       stock:             parseInt(req.body.stock) || 0,
       estimatedDelivery: req.body.estimatedDelivery || '',
+      category:          req.body.category || 'Uncategorized',
+      sortOrder:         parseInt(req.body.sortOrder) || 0,
     };
     if (req.files && req.files.length > 0) {
       setData.images = req.files.map(f => f.path);
