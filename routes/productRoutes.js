@@ -60,7 +60,8 @@ router.post('/', auth, upload.array('images', 5), async (req, res) => {
       name,
       price: parseFloat(price),
       description,
-      stock:         parseInt(stock) || 0,
+      stock:            parseInt(stock) || 0,
+      estimatedDelivery: req.body.estimatedDelivery || '',
       originalPrice: req.body.originalPrice ? parseFloat(req.body.originalPrice) : undefined,
       sizes:         sizes ? JSON.parse(sizes) : ['S', 'M', 'L', 'XL'],
       images:        req.files.map(f => f.path)
@@ -80,20 +81,30 @@ router.post('/', auth, upload.array('images', 5), async (req, res) => {
 // ── UPDATE PRODUCT ─────────────────────────────────────────
 router.put('/:id', auth, upload.array('images', 5), async (req, res) => {
   try {
-    const updatedData = {
-      ...req.body,
-      sizes:         JSON.parse(req.body.sizes || '[]'),
-      price:         parseFloat(req.body.price),
-      originalPrice: req.body.originalPrice ? parseFloat(req.body.originalPrice) : null
+    const setData = {
+      name:        req.body.name,
+      description: req.body.description,
+      sizes:       JSON.parse(req.body.sizes || '[]'),
+      price:       parseFloat(req.body.price),
+      stock:             parseInt(req.body.stock) || 0,
+      estimatedDelivery: req.body.estimatedDelivery || '',
     };
-
     if (req.files && req.files.length > 0) {
-      updatedData.images = req.files.map(f => f.path);
+      setData.images = req.files.map(f => f.path);
+    }
+
+    // Build update — $unset originalPrice if blank, $set if provided
+    const updateOp = { $set: setData };
+    const origVal = req.body.originalPrice;
+    if (origVal && parseFloat(origVal) > 0) {
+      setData.originalPrice = parseFloat(origVal);
+    } else {
+      updateOp.$unset = { originalPrice: '' };
     }
 
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      updatedData,
+      updateOp,
       { new: true }
     );
 

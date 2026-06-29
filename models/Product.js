@@ -7,7 +7,8 @@ const productSchema = new mongoose.Schema({
   images:        [String],
   description:   String,
   sizes:         [String],
-  stock:         Number
+  stock:            Number,
+  estimatedDelivery: { type: String, default: '' }  // e.g. '2-3 days' or 'by 30 Jun'
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);
