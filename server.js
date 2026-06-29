@@ -20,6 +20,9 @@ app.use('/payment',  require('./routes/paymentRoutes'));
 app.use('/coupons',  require('./routes/couponRoutes'));
 app.use('/banners',  require('./routes/bannerRoutes')); // ✅ NEW
 
+// ── Health check for UptimeRobot ─────────────────────────
+app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);

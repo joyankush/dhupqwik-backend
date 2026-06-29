@@ -10,7 +10,8 @@ const upload  = require('../middleware/uploadMiddleware');
 // ── GET /banners — Public (frontend fetches active banners)
 router.get('/', async (req, res) => {
   try {
-    const banners = await Banner.find({ isActive: true }).sort({ order: 1, createdAt: 1 });
+    // isActive: true OR isActive not set (older docs)
+    const banners = await Banner.find({ isActive: { $ne: false } }).sort({ order: 1, createdAt: 1 });
     res.json(banners);
   } catch (err) {
     res.status(500).json({ message: err.message });

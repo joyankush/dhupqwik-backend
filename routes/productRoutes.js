@@ -60,9 +60,10 @@ router.post('/', auth, upload.array('images', 5), async (req, res) => {
       name,
       price: parseFloat(price),
       description,
-      stock: parseInt(stock) || 0,
-      sizes: sizes ? JSON.parse(sizes) : ['S', 'M', 'L', 'XL'],
-      images: req.files.map(f => f.path)
+      stock:         parseInt(stock) || 0,
+      originalPrice: req.body.originalPrice ? parseFloat(req.body.originalPrice) : undefined,
+      sizes:         sizes ? JSON.parse(sizes) : ['S', 'M', 'L', 'XL'],
+      images:        req.files.map(f => f.path)
     });
 
     await product.save();
@@ -81,7 +82,9 @@ router.put('/:id', auth, upload.array('images', 5), async (req, res) => {
   try {
     const updatedData = {
       ...req.body,
-      sizes: JSON.parse(req.body.sizes || '[]')
+      sizes:         JSON.parse(req.body.sizes || '[]'),
+      price:         parseFloat(req.body.price),
+      originalPrice: req.body.originalPrice ? parseFloat(req.body.originalPrice) : null
     };
 
     if (req.files && req.files.length > 0) {
